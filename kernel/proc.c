@@ -63,16 +63,14 @@ int cpuid() {
 
 // Return this CPU's cpu struct.
 // Interrupts must be disabled.
-struct cpu *
-mycpu(void) {
+struct cpu *mycpu(void) {
     int id = cpuid();
     struct cpu *c = &cpus[id];
     return c;
 }
 
 // Return the current struct proc *, or zero if none.
-struct proc *
-myproc(void) {
+struct proc *myproc(void) {
     push_off();
     struct cpu *c = mycpu();
     struct proc *p = c->proc;
@@ -95,8 +93,7 @@ int allocpid() {
 // If found, initialize state required to run in the kernel,
 // and return with p->lock held.
 // If there are no free procs, or a memory allocation fails, return 0.
-static struct proc *
-allocproc(void) {
+static struct proc *allocproc(void) {
     struct proc *p;
 
     for (p = proc; p < &proc[NPROC]; p++) {
@@ -140,8 +137,7 @@ found:
 // free a proc structure and the data hanging from it,
 // including user pages.
 // p->lock must be held.
-static void
-freeproc(struct proc *p) {
+static void freeproc(struct proc *p) {
     if (p->trapframe)
         kfree((void *)p->trapframe);
     p->trapframe = 0;
@@ -160,8 +156,7 @@ freeproc(struct proc *p) {
 
 // Create a user page table for a given process,
 // with no user memory, but with trampoline pages.
-pagetable_t
-proc_pagetable(struct proc *p) {
+pagetable_t proc_pagetable(struct proc *p) {
     pagetable_t pagetable;
 
     // An empty page table.

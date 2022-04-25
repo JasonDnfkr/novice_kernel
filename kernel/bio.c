@@ -1,17 +1,18 @@
 // Buffer cache.
-//
-// The buffer cache is a linked list of buf structures holding
-// cached copies of disk block contents.  Caching disk blocks
-// in memory reduces the number of disk reads and also provides
-// a synchronization point for disk blocks used by multiple processes.
-//
-// Interface:
-// * To get a buffer for a particular disk block, call bread.
-// * After changing buffer data, call bwrite to write it to disk.
-// * When done with the buffer, call brelse.
-// * Do not use the buffer after calling brelse.
-// * Only one process at a time can use a buffer,
-//     so do not keep them longer than necessary.
+/*
+    Buffer cache 缓冲区
+    buffer cache 描述了 buf 结构的链表，保存磁盘内容的缓存
+    以减少进程对磁盘的 I/O，为多个进程使用的磁盘提供同步机制（未完成）
+
+    Interface:
+    bread:   读取一个特定 disk block 的缓冲区
+             返回一个锁住的 buffer
+    bwrite:  将缓冲区内容写入磁盘
+    brelse:  使用完缓冲区后，使用这个函数来处理锁
+    * Do not use the buffer after calling brelse.
+    * Only one process at a time can use a buffer,
+         so do not keep them longer than necessary.
+*/
 
 #include "types.h"
 #include "param.h"
@@ -26,9 +27,11 @@ struct {
     struct spinlock lock;
     struct buf buf[NBUF];
 
-    // Linked list of all buffers, through prev/next.
-    // Sorted by how recently the buffer was used.
-    // head.next is most recent, head.prev is least.
+/*
+    Linked list of all buffers, through prev / next.
+    根据最近使用的频率排序（LRU 算法）
+    head.next 是最频繁的，head.prev 是最少使用的
+ */
     struct buf head;
 } bcache;
 
@@ -37,7 +40,8 @@ void binit(void) {
 
     initlock(&bcache.lock, "bcache");
 
-    // Create linked list of buffers
+    // 初始化 buffer cache 的节点
+    // 首先是首尾相连
     bcache.head.prev = &bcache.head;
     bcache.head.next = &bcache.head;
     for (b = bcache.buf; b < bcache.buf + NBUF; b++) {
@@ -58,7 +62,7 @@ bget(uint dev, uint blockno) {
 
     acquire(&bcache.lock);
 
-    // Is the block already cached?
+    // 检索这个 block 是否已经在 cache 中。遍历
     for (b = bcache.head.next; b != &bcache.head; b = b->next) {
         if (b->dev == dev && b->blockno == blockno) {
             b->refcnt++;
@@ -68,8 +72,8 @@ bget(uint dev, uint blockno) {
         }
     }
 
-    // Not cached.
-    // Recycle the least recently used (LRU) unused buffer.
+    // 没有命中。
+    // 根据 LRU 算法去除最不常用的缓存。
     for (b = bcache.head.prev; b != &bcache.head; b = b->prev) {
         if (b->refcnt == 0) {
             b->dev = dev;
