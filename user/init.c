@@ -1,4 +1,4 @@
-// init: The initial user-level program
+// init: 初始第一个用户进程
 
 #include "kernel/types.h"
 #include "kernel/stat.h"
@@ -21,7 +21,7 @@ int main(void) {
     dup(0); // stdout
     dup(0); // stderr
 
-    for (;;) {
+    while (1) {
         printf("init: starting sh\n");
         pid = fork();
         if (pid < 0) {
@@ -34,18 +34,18 @@ int main(void) {
             exit(1);
         }
 
-        for (;;) {
-            // this call to wait() returns if the shell exits,
-            // or if a parentless process exits.
+        while (1) {
+            // 调用 wait() 来接收 shell 进程的退出，
+            // 但是 shell 不会退出，所以一直等
             wpid = wait((int *)0);
             if (wpid == pid) {
-                // the shell exited; restart it.
+                // shell 挂了，重启 sh
                 break;
             } else if (wpid < 0) {
                 printf("init: wait returned an error\n");
                 exit(1);
             } else {
-                // it was a parentless process; do nothing.
+                // init 没有父进程，持续循环.
             }
         }
     }

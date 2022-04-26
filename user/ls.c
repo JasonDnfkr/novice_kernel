@@ -53,6 +53,14 @@ void lsfmtprint(char* buf, struct stat* st) {
         }
     // default:
     //     break;
+    case T_DEVICE:
+    if (st->ino == 1) break;
+    if (st->ino < 10) {
+            printf("%s  %s %d    %l\n", fmtname(buf), DEVICE, st->ino, st->size);
+        }
+        else {
+            printf("%s  %s %d   %l\n", fmtname(buf), DEVICE, st->ino, st->size);
+        }
     }
 }
 
