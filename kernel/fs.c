@@ -27,8 +27,7 @@
 struct superblock sb;
 
 // Read the super block.
-static void
-readsb(int dev, struct superblock *sb) {
+static void readsb(int dev, struct superblock *sb) {
     struct buf *bp;
 
     bp = bread(dev, 1);
@@ -45,8 +44,7 @@ void fsinit(int dev) {
 }
 
 // Zero a block.
-static void
-bzero(int dev, int bno) {
+static void bzero(int dev, int bno) {
     struct buf *bp;
 
     bp = bread(dev, bno);
@@ -57,16 +55,18 @@ bzero(int dev, int bno) {
 
 // Blocks.
 
-// Allocate a zeroed disk block.
-static uint
-balloc(uint dev) {
+// alloc 一个全为 0 的 DISK BLOCK，
+// 同时操作 bitmap
+static uint balloc(uint dev) {
     int b, bi, m;
     struct buf *bp;
 
     bp = 0;
-    for (b = 0; b < sb.size; b += BPB) {
+    for (b = 0; b < sb.size; b += BPB) {     // 第一层循环遍历所有的 bitmap block
         bp = bread(dev, BBLOCK(b, sb));
         for (bi = 0; bi < BPB && b + bi < sb.size; bi++) {
+            // 第二层循环，遍历第一层找到的 bitmap block 的所有 bit，
+            // 找出一个空闲位
             m = 1 << (bi % 8);
             if ((bp->data[bi / 8] & m) == 0) { // Is block free?
                 bp->data[bi / 8] |= m;         // Mark block in use.
@@ -81,9 +81,9 @@ balloc(uint dev) {
     panic("balloc: out of blocks");
 }
 
-// Free a disk block.
-static void
-bfree(int dev, uint b) {
+// free 一个 disk block，
+// 同时操作 bitmap
+static void bfree(int dev, uint b) {
     struct buf *bp;
     int bi, m;
 
@@ -185,8 +185,7 @@ static struct inode *iget(uint dev, uint inum);
 // Allocate an inode on device dev.
 // Mark it as allocated by  giving it type type.
 // Returns an unlocked but allocated and referenced inode.
-struct inode *
-ialloc(uint dev, short type) {
+struct inode* ialloc(uint dev, short type) {
     int inum;
     struct buf *bp;
     struct dinode *dip;
@@ -229,8 +228,7 @@ void iupdate(struct inode *ip) {
 // Find the inode with number inum on device dev
 // and return the in-memory copy. Does not lock
 // the inode and does not read it from disk.
-static struct inode *
-iget(uint dev, uint inum) {
+static struct inode* iget(uint dev, uint inum) {
     struct inode *ip, *empty;
 
     acquire(&itable.lock);
@@ -263,8 +261,7 @@ iget(uint dev, uint inum) {
 
 // Increment reference count for ip.
 // Returns ip to enable ip = idup(ip1) idiom.
-struct inode *
-idup(struct inode *ip) {
+struct inode* idup(struct inode *ip) {
     acquire(&itable.lock);
     ip->ref++;
     release(&itable.lock);
@@ -355,62 +352,122 @@ void iunlockput(struct inode *ip) {
 // Return the disk block address of the nth block in inode ip.
 // If there is no such block, bmap allocates one.
 static uint
-bmap(struct inode *ip, uint bn) {
-    uint addr, *a;
-    struct buf *bp;
+bmap(struct inode *ip, uint bn)
+{
+  uint addr, *a;
+  struct buf *bp;
 
-    if (bn < NDIRECT) {
-        if ((addr = ip->addrs[bn]) == 0)
-            ip->addrs[bn] = addr = balloc(ip->dev);
-        return addr;
+  if(bn < NDIRECT){ // 如果 bn 小于 NDIRECT 直接索引的 BLOCK
+    if((addr = ip->addrs[bn]) == 0) // addr 为空，意思就是要新建
+      ip->addrs[bn] = addr = balloc(ip->dev);
+    return addr;
+  }
+  bn -= NDIRECT; // 去掉前 11 位，进行间接索引的工作处理
+
+  if(bn < NINDIRECT){ // 超了就直接 panic，怎么可以超捏？
+    // Load indirect block, allocating if necessary.
+
+    if((addr = ip->addrs[NDIRECT]) == 0)
+      // 检测到为空，创建一个新的.
+      // 这里是说明，还没有用到 indirect 的 block
+      ip->addrs[NDIRECT] = addr = balloc(ip->dev); 
+    bp = bread(ip->dev, addr);  // 读取对应位置的 block. 这里读到的是
+                                // 记录了下一级 inode 信息的 block，
+                                // 一级索引
+    a = (uint*)bp->data;
+    if((addr = a[bn]) == 0){ // 二级 block 对应的块号位置是空的，说明没有
+      a[bn] = addr = balloc(ip->dev);
+      log_write(bp);
     }
-    bn -= NDIRECT;
+    brelse(bp);
 
-    if (bn < NINDIRECT) {
-        // Load indirect block, allocating if necessary.
-        if ((addr = ip->addrs[NDIRECT]) == 0)
-            ip->addrs[NDIRECT] = addr = balloc(ip->dev);
-        bp = bread(ip->dev, addr);
-        a = (uint *)bp->data;
-        if ((addr = a[bn]) == 0) {
-            a[bn] = addr = balloc(ip->dev);
-            log_write(bp);
-        }
-        brelse(bp);
-        return addr;
+    return addr;
+  }
+
+  bn -= NINDIRECT;
+
+  if(bn < NINDIRECT_SEC){
+    int fir = bn / NINDIRECT;
+    int sec = bn % NINDIRECT;
+    if((addr = ip->addrs[NDIRECT_EX]) == 0)
+      ip->addrs[NDIRECT_EX] = addr = balloc(ip->dev);
+
+    bp = bread(ip->dev, addr);
+    a = (uint*)bp->data;
+    if((addr = a[fir]) == 0){
+      a[fir] = addr = balloc(ip->dev); // addr 指向二级索引 block 的地址
+      log_write(bp);
     }
+    brelse(bp);
 
-    panic("bmap: out of range");
+    bp = bread(ip->dev, addr);
+    a = (uint*)bp->data;
+    if((addr = a[sec]) == 0){
+      a[sec] = addr = balloc(ip->dev);
+      log_write(bp);
+    }
+    brelse(bp);
+
+    return addr;
+  }
+
+  panic("bmap: out of range");
 }
+
 
 // Truncate inode (discard contents).
 // Caller must hold ip->lock.
-void itrunc(struct inode *ip) {
-    int i, j;
-    struct buf *bp;
-    uint *a;
+void
+itrunc(struct inode *ip)
+{
+  int i, j, k;
+  struct buf *bp;
+  uint *a;
 
-    for (i = 0; i < NDIRECT; i++) {
-        if (ip->addrs[i]) {
-            bfree(ip->dev, ip->addrs[i]);
-            ip->addrs[i] = 0;
-        }
+  for(i = 0; i < NDIRECT; i++){
+    if(ip->addrs[i]){
+      bfree(ip->dev, ip->addrs[i]);
+      ip->addrs[i] = 0;
     }
+  }
 
-    if (ip->addrs[NDIRECT]) {
-        bp = bread(ip->dev, ip->addrs[NDIRECT]);
-        a = (uint *)bp->data;
-        for (j = 0; j < NINDIRECT; j++) {
-            if (a[j])
-                bfree(ip->dev, a[j]);
-        }
-        brelse(bp);
-        bfree(ip->dev, ip->addrs[NDIRECT]);
-        ip->addrs[NDIRECT] = 0;
+  if(ip->addrs[NDIRECT]){
+    bp = bread(ip->dev, ip->addrs[NDIRECT]);
+    a = (uint*)bp->data;
+    for(j = 0; j < NINDIRECT; j++){
+      if(a[j])
+        bfree(ip->dev, a[j]);
     }
+    brelse(bp);
+    bfree(ip->dev, ip->addrs[NDIRECT]);
+    ip->addrs[NDIRECT] = 0;
+  }
 
-    ip->size = 0;
-    iupdate(ip);
+  // (+)
+  if(ip->addrs[NDIRECT_EX]){
+    bp = bread(ip->dev, ip->addrs[NDIRECT_EX]);
+    a = (uint*)bp->data;
+    for (j = 0; j < NINDIRECT; j++){
+      if(a[j]){
+        struct buf* bp_sec = bread(ip->dev, a[j]);
+        uint* a_sec = (uint*)bp_sec->data;
+        for (k = 0; k < NINDIRECT; k++){
+          if(a_sec[k]){
+            bfree(ip->dev, a_sec[k]);
+          }
+        }
+        bfree(ip->dev, a[j]);
+        brelse(bp_sec);
+      }
+    }
+    
+    brelse(bp);
+    bfree(ip->dev, ip->addrs[NDIRECT_EX]);
+    ip->addrs[NDIRECT_EX] = 0;
+  }
+
+  ip->size = 0;
+  iupdate(ip);
 }
 
 // Copy stat information from inode.
@@ -495,8 +552,7 @@ int namecmp(const char *s, const char *t) {
 
 // Look for a directory entry in a directory.
 // If found, set *poff to byte offset of entry.
-struct inode *
-dirlookup(struct inode *dp, char *name, uint *poff) {
+struct inode* dirlookup(struct inode *dp, char *name, uint *poff) {
     uint off, inum;
     struct dirent de;
 
@@ -562,8 +618,7 @@ int dirlink(struct inode *dp, char *name, uint inum) {
 //   skipelem("a", name) = "", setting name = "a"
 //   skipelem("", name) = skipelem("////", name) = 0
 //
-static char *
-skipelem(char *path, char *name) {
+static char* skipelem(char *path, char *name) {
     char *s;
     int len;
 
@@ -590,8 +645,7 @@ skipelem(char *path, char *name) {
 // If parent != 0, return the inode for the parent and copy the final
 // path element into name, which must have room for DIRSIZ bytes.
 // Must be called inside a transaction since it calls iput().
-static struct inode *
-namex(char *path, int nameiparent, char *name) {
+static struct inode* namex(char *path, int nameiparent, char *name) {
     struct inode *ip, *next;
 
     if (*path == '/')
@@ -624,13 +678,11 @@ namex(char *path, int nameiparent, char *name) {
     return ip;
 }
 
-struct inode *
-namei(char *path) {
+struct inode* namei(char *path) {
     char name[DIRSIZ];
     return namex(path, 0, name);
 }
 
-struct inode *
-nameiparent(char *path, char *name) {
+struct inode* nameiparent(char *path, char *name) {
     return namex(path, 1, name);
 }

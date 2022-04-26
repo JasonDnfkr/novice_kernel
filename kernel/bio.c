@@ -56,6 +56,7 @@ void binit(void) {
 // Look through buffer cache for block on device dev.
 // If not found, allocate a buffer.
 // In either case, return locked buffer.
+// 好像就是拿一个缓冲区
 static struct buf *
 bget(uint dev, uint blockno) {
     struct buf *b;
