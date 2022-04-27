@@ -3,8 +3,20 @@
 #include "user/user.h"
 #include "kernel/fs.h"
 
-char *
-fmtname(char *path) {
+#define MAXSTRLEN 10
+
+const char* FNAME     = "Name           ";
+const char* FTYPE     = "Type   ";
+const char* FINODE    = "Ino ";
+const char* FSIZE     = "Size (Bytes)";
+
+const char* DIR       = "DIR    ";
+const char* FILE      = "FILE   ";
+const char* DEVICE    = "DEVICE ";
+const char* SYMLINK   = "SYMLINK";
+
+
+char* fmtname(char *path) {
     static char buf[DIRSIZ + 1];
     char *p;
 
@@ -19,6 +31,29 @@ fmtname(char *path) {
     memmove(buf, p, strlen(p));
     memset(buf + strlen(p), ' ', DIRSIZ - strlen(p));
     return buf;
+}
+
+void lsfmtprint(char* buf, struct stat* st) {
+    switch (st->type) {
+    case T_FILE:
+        if (st->ino < 10) {
+            printf("%s  %s %d    %l\n", fmtname(buf), FILE, st->ino, st->size);
+        }
+        else {
+            printf("%s  %s %d   %l\n", fmtname(buf), FILE, st->ino, st->size);
+        }
+        break;
+        
+    case T_DIR:
+        if (st->ino < 10) {
+            printf("%s  %s %d    %l\n", fmtname(buf), DIR, st->ino, st->size);
+        }
+        else {
+            printf("%s  %s %d   %l\n", fmtname(buf), DIR, st->ino, st->size);
+        }
+    // default:
+    //     break;
+    }
 }
 
 void ls(char *path) {
@@ -38,9 +73,14 @@ void ls(char *path) {
         return;
     }
 
+    printf("--------------- ------- ---- ------------\n");
+    printf("%s %s %s %s\n", FNAME, FTYPE, FINODE, FSIZE);
+    printf("--------------- ------- ---- ------------\n");
+
     switch (st.type) {
     case T_FILE:
-        printf("%s %d %d %l\n", fmtname(path), st.type, st.ino, st.size);
+        // printf("%s %d %d %l\n", fmtname(path), st.type, st.ino, st.size);
+        lsfmtprint(path, &st);
         break;
 
     case T_DIR:
@@ -60,7 +100,8 @@ void ls(char *path) {
                 printf("ls: cannot stat %s\n", buf);
                 continue;
             }
-            printf("%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+            // printf("%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+            lsfmtprint(buf, &st);
         }
         break;
     }
