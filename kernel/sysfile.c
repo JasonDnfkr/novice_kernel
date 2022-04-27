@@ -218,7 +218,7 @@ bad:
     return -1;
 }
 
-static struct inode* create(char *path, short type, short major, short minor) {
+struct inode* create(char *path, short type, short major, short minor) {
     struct inode *ip, *dp;
     char name[DIRSIZ];
 
@@ -291,6 +291,38 @@ uint64 sys_open(void) {
             return -1;
         }
     }
+
+    // (+) 加入 SYMLINK 的 open 配置
+    if (ip->type == T_SYMLINK && (omode & O_NOFOLLOW) == 0) {
+        char target[MAXPATH];
+        int cnt = MAXDEPTH;
+        while (cnt--) {
+            if (readi(ip, 0, (uint64)target, 0, MAXPATH) != MAXPATH) {
+                iunlockput(ip);
+                end_op();
+                return -1;
+            }
+
+            // 原本的软连接不再需要，释放它的锁
+            iunlockput(ip);
+            // 得到了 target，解析路径得到目标文件 inode
+            if ((ip = namei(target)) == 0) {
+                end_op();
+                return -1;
+            }
+            ilock(ip);
+            if (ip->type != T_SYMLINK) {
+                break;
+            }
+
+            if (cnt == 0) {
+                iunlockput(ip);
+                end_op();
+                return -1;
+            }
+        }
+    }
+    
 
     if (ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)) {
         iunlockput(ip);
