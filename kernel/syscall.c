@@ -7,6 +7,7 @@
 #include "syscall.h"
 #include "defs.h"
 
+
 // Fetch the uint64 at addr from the current process.
 int fetchaddr(uint64 addr, uint64 *ip) {
     struct proc *p = myproc();
@@ -93,6 +94,8 @@ extern uint64 sys_unlink(void);
 extern uint64 sys_wait(void);
 extern uint64 sys_write(void);
 extern uint64 sys_uptime(void);
+
+extern uint64 sys_strace(void);
 extern uint64 sys_symlink(void);
 
 static uint64 (*syscalls[])(void) = {
@@ -117,9 +120,140 @@ static uint64 (*syscalls[])(void) = {
     [SYS_link]       sys_link,
     [SYS_mkdir]      sys_mkdir,
     [SYS_close]      sys_close,
-    
+
+    [SYS_strace]     sys_strace,
     [SYS_symlink]    sys_symlink,
 };
+
+static char* syscalls_name[SYSNUM] = {
+    "",
+    "fork",
+    "exit", 
+    "wait",
+    "pipe",
+    "read", // 5
+    "kill",
+    "exec",
+    "fstat",
+    "chdir",
+    "dup", // 10
+    "getpid",
+    "sbrk",
+    "sleep",
+    "uptime",
+    "open", // 15
+    "write",
+    "mknod",
+    "unlink",
+    "link",
+    "mkdir", // 20
+    "close",
+    "strace",
+    // "sysinfo",
+};
+
+// static int syscalls_arg[SYSNUM] = {
+//     0,
+//     0,    // int    -fork(void);
+//     1,    // int    -exit(int) __attribute__((noreturn));
+//     1,    // int    -wait(int*);
+//     1,    // int    -pipe(int*);
+//     3,    // int  5 -read(int, void*, int);
+//     1,    // int  6 -kill(int);
+//     2,    // int  7 -exec(char*, char**);
+//     2,    // int  8 -fstat(int fd, struct stat*);
+//     1,    // int  9 -chdir(const char*);
+//     1,    // int  10-dup(int);
+//     0,    // int  11 getpid(void);
+//     1,    // char*12-sbrk(int);
+//     1,    // int  13-sleep(int);
+//     0,    // int  14 uptime(void);
+//     2,    // int  15-open(const char*, int);
+//     3,    // int  16-write(int, const void*, int);
+//     3,    // int  17 mknod(const char*, short, short);
+//     1,    // int  18-unlink(const char*);
+//     2,    // int  19-link(const char*, const char*);
+//     1,    // int  20-mkdir(const char*);
+//     1,    // int  21-close(int);
+
+//     1,    // int  22-strace(int);
+//     // 2,    // int  23 symlink(const char*, const char*);
+// };
+
+#define __SYSPRINT_ON__
+
+void sysprint(int num) {
+    struct proc* p = myproc();
+    #ifdef __SYSPRINT_ON__
+    #define arg0 p->trapframe->a0
+    #define arg1 p->trapframe->a1
+    #define arg2 p->trapframe->a2
+    #define arg3 p->trapframe->a3
+    #define arg4 p->trapframe->a4
+    #define arg5 p->trapframe->a5
+    #endif
+    printf("(");
+
+    switch (num) {
+    // 1 arg0: integer
+    case SYS_fork:
+    case SYS_exit:
+    case SYS_dup:
+    case SYS_sbrk:
+    case SYS_sleep:
+    case SYS_close:
+    case SYS_strace:
+    case SYS_kill:
+    printf("%d", arg0);
+    break;
+
+    case SYS_read:
+    case SYS_write:
+        printf("%d, 0x%x, %d", arg0, arg1, arg2);
+        break;
+
+    // 2 arg0: pointer   arg1: pointer
+    case SYS_exec:
+    case SYS_link:
+    case SYS_symlink:
+        printf("0x%x, 0x%x", arg0, arg1);
+        break;
+
+    // 1 arg0: pointer
+    case SYS_wait:
+    case SYS_pipe:
+    case SYS_chdir:
+    case SYS_unlink:
+    case SYS_mkdir:
+        printf("0x%x", arg0);
+        break;
+
+    // 2 arg0: integer   arg1: pointer
+    case SYS_fstat:
+        printf("%d, 0x%x", arg0, arg1);
+        break;
+
+    // 3 arg0: pointer   arg1: integer   arg2: integer
+    case SYS_mknod:
+        printf("0x%x, %d, %d", arg0, arg1, arg2);
+        break;
+
+    // 2 arg0: pointer   arg1: integer
+    case SYS_open:
+        printf("0x%x, %d", arg0, arg1);
+        break;
+
+    // no args
+    default:
+        break;
+    }
+
+
+    printf("): ");
+}
+
+#undef __SYSPRINT_ON__
+
 
 void syscall(void) {
     int num;
@@ -127,7 +261,24 @@ void syscall(void) {
 
     num = p->trapframe->a7;
     if (num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+        // (+) mini strace 输出 syscall 名称
+        if ((p->mask & (1 << num)) != 0) {
+            printf("%d: syscall %s", p->pid, syscalls_name[num]);
+            if (num == SYS_exit) {
+                printf("\n");
+            }
+            else {
+                sysprint(num);
+            }
+        }
         p->trapframe->a0 = syscalls[num]();
+
+        // (+) mini strace 输出返回值
+        if ((p->mask & (1 << num)) != 0) {
+            printf(" -> %d\n", p->trapframe->a0);
+        }
+
+
     } else {
         printf("%d %s: unknown sys call %d\n",
                p->pid, p->name, num);

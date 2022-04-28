@@ -136,6 +136,8 @@ UPROGS=\
 	$U/_bigfile\
 	$U/_symlinktest\
 	$U/_sleep\
+	$U/_strace\
+	$U/_test\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
