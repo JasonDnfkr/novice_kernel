@@ -56,11 +56,10 @@ void kfree(void *pa) {
     release(&kmem.lock);
 }
 
-// Allocate one 4096-byte page of physical memory.
-// Returns a pointer that the kernel can use.
-// Returns 0 if the memory cannot be allocated.
-void *
-kalloc(void) {
+// 申请一个 4096-byte 的物理页.
+// 返回一个内核可以使用的指针.
+// 如果内存无法申请，则返回 0.
+void* kalloc(void) {
     struct run *r;
 
     acquire(&kmem.lock);
@@ -73,3 +72,17 @@ kalloc(void) {
         memset((char *)r, 5, PGSIZE); // fill with junk
     return (void *)r;
 }
+
+// 计算系统的空闲内存，单位为 bytes.
+int kmemamount(void) {
+    int amount = 0;
+    struct run* r;
+
+    r = kmem.freelist;
+    while (r) {
+        amount += PGSIZE;
+        r = r->next;
+    }
+
+    return amount;
+} 

@@ -22,8 +22,9 @@
 #define SYS_close         21
 
 #define SYS_strace        22
-#define SYS_symlink       23
+#define SYS_sysinfo       23
+#define SYS_symlink       24
 
 
 //System call total num
-#define SYSNUM (22 + 1)
+#define SYSNUM (24 + 1)

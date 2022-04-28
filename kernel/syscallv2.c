@@ -9,6 +9,7 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
+#include "sysinfo.h"
 
 /**
  * @brief 创建一个软连接。
@@ -51,5 +52,26 @@ uint64 sys_strace(void) {
         return -1;
     }
     myproc()->mask = mask;
+    return 0;
+}
+
+uint64 sys_sysinfo(void) {
+    // printf("sss\n");
+    struct sysinfo si;
+    uint64 addr;
+    if (argaddr(0, &addr) < 0) {
+        return -1;
+    }
+
+    struct proc* p = myproc();
+    si.freemem = kmemamount();
+    si.nproc = procamount();
+
+    // printf("si.freemem: %d, si.nproc: %d\n", si.freemem, si.nproc);
+
+    if (copyout(p->pagetable, (uint64)addr, (char*)&si, sizeof(si))< 0) {
+        return -1;
+    }
+    
     return 0;
 }

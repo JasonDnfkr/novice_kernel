@@ -96,6 +96,7 @@ extern uint64 sys_write(void);
 extern uint64 sys_uptime(void);
 
 extern uint64 sys_strace(void);
+extern uint64 sys_sysinfo(void);
 extern uint64 sys_symlink(void);
 
 static uint64 (*syscalls[])(void) = {
@@ -122,6 +123,7 @@ static uint64 (*syscalls[])(void) = {
     [SYS_close]      sys_close,
 
     [SYS_strace]     sys_strace,
+    [SYS_sysinfo]    sys_sysinfo,
     [SYS_symlink]    sys_symlink,
 };
 
@@ -149,7 +151,9 @@ static char* syscalls_name[SYSNUM] = {
     "mkdir", // 20
     "close",
     "strace",
-    // "sysinfo",
+    "sysinfo",
+
+    "symlink",
 };
 
 // static int syscalls_arg[SYSNUM] = {
@@ -225,6 +229,7 @@ void sysprint(int num) {
     case SYS_chdir:
     case SYS_unlink:
     case SYS_mkdir:
+    case SYS_sysinfo:
         printf("0x%x", arg0);
         break;
 

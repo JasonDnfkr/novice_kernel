@@ -604,3 +604,17 @@ void procdump(void) {
         printf("\n");
     }
 }
+
+
+// 计算系统当前运行的进程数量
+// p->state == UNUSED
+int procamount(void) {
+    int amount = 0;
+    struct proc* p;
+    for (p = proc; p < &proc[NPROC]; p++) {
+        if (p->state != UNUSED) {
+            amount++;
+        }
+    }
+    return amount;
+}
