@@ -7,10 +7,6 @@
 int main(int argc, char* argv[]) {
     char str[10] = "test str\n";
 
-    // uint64 addr = (uint64)str;
-
-    // printf("<%p>\n", addr);
-
     write(1, str, strlen(str));    
 
     struct sysinfo si;
