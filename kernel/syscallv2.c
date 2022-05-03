@@ -76,7 +76,38 @@ uint64 sys_sysinfo(void) {
     return 0;
 }
 
-uint64 sys_vmprint() {
+uint64 sys_vmprint(void) {
     pgtblprint();
+    return 0;
+}
+
+uint64 sys_sigalarm(void) {
+    int interval;
+    uint64 handler;
+    if (argint(0, &interval) < 0) {
+        return -1;
+    }
+    if (argaddr(1, &handler) < 0) {
+        return -1;
+    }
+    if (interval == 0) {
+        return 0;
+    }
+    
+    struct proc* p = myproc();
+    p->trapalarm.interval = interval;
+    p->trapalarm.handler = (void*)handler;
+    p->trapalarm.ticks = 0;
+    
+    return 0;
+}
+
+uint64 sys_sigreturn(void) {
+    struct proc* p = myproc();
+    *(p->trapframe) = p->trapalarm.trapframe_cp;
+    // p->trapalarm.interval = 0;
+    // p->trapalarm.ticks = 0;
+    memset(&p->trapalarm.trapframe_cp, 0, sizeof(struct trapframe));
+    p->trapalarm.state = 0;
     return 0;
 }

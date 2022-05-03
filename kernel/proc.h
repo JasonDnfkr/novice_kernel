@@ -80,6 +80,16 @@ struct trapframe {
     /* 280 */ uint64 t6;
 };
 
+// trap alarm handler
+struct trapalarm {
+    int interval;                       // alarm interval
+    int ticks;                          // 已经运行了多少 tick
+    int state;                          // 此时是否在运行 handler
+    void (*handler)(void);              // handler 函数指针
+    struct trapframe trapframe_cp;     // trapframe 备份
+};
+
+
 enum procstate { UNUSED,
                  USED,
                  SLEEPING,
@@ -112,5 +122,6 @@ struct proc {
     char name[16];               // 进程名字 (debug用)
 
     int mask;                    // 给 strace 提供的变量
-    pagetable_t kerntable;    // 内核页表
+    pagetable_t kerntable;       // 内核页表
+    struct trapalarm trapalarm; // trap alarm handler
 };

@@ -73,9 +73,22 @@ void usertrap(void) {
         exit(-1);
 
     // give up the CPU if this is a timer interrupt.
-    if (which_dev == 2)
+    if (which_dev == 2) {
+        // 对 alarm handler 进行处理
+        if (p->trapalarm.interval != 0) { // 不为0，说明开启了 alarm 机制
+            if (p->trapalarm.state == 0) {
+                p->trapalarm.ticks++;
+                if (p->trapalarm.ticks == p->trapalarm.interval) {
+                    p->trapalarm.ticks = 0;
+                    p->trapalarm.state = 1;
+                    p->trapalarm.trapframe_cp = *(p->trapframe);
+                    
+                    p->trapframe->epc = (uint64)p->trapalarm.handler;
+                }
+            }
+        }
         yield();
-
+    }
     usertrapret();
 }
 

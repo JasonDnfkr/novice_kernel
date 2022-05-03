@@ -28,6 +28,8 @@ int     uptime(void);
 int     strace(int);
 int     sysinfo(struct sysinfo*);
 int     symlink(const char*, const char*);
+int     sigalarm(int ticks, void (*handler)());
+int     sigreturn(void);
 
 // ulib.c
 int     stat(const char*, struct stat*);

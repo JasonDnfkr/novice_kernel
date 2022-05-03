@@ -41,3 +41,5 @@ entry("strace");
 entry("sysinfo");
 entry("symlink");
 entry("vmprint");
+entry("sigalarm");
+entry("sigreturn");

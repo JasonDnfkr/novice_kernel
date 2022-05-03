@@ -122,6 +122,12 @@ found:
         return 0;
     }
 
+    // (+) 分配 alarm handler 数据
+    p->trapalarm.interval = 0;
+    p->trapalarm.handler = (void*)0;
+    p->trapalarm.ticks = 0;
+    p->trapalarm.state = 0;
+
     
     // (+) An empty kernel page table.
     p->kerntable = kvminit_kern();
@@ -135,6 +141,7 @@ found:
         panic("kern_pagetable kalloc");
     }
     
+    // (+) 分配内核栈
     uint64 va = TRAMPOLINE - 2 * PGSIZE;
     mappages(p->kerntable, va, PGSIZE, (uint64)pa, PTE_R | PTE_W);
     p->kstack = va;

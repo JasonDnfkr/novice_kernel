@@ -99,6 +99,8 @@ extern uint64 sys_strace(void);
 extern uint64 sys_sysinfo(void);
 extern uint64 sys_symlink(void);
 extern uint64 sys_vmprint(void);
+extern uint64 sys_sigalarm(void);
+extern uint64 sys_sigreturn(void);
 
 static uint64 (*syscalls[])(void) = {
     [SYS_fork]       sys_fork,
@@ -127,6 +129,9 @@ static uint64 (*syscalls[])(void) = {
     [SYS_sysinfo]    sys_sysinfo,
     [SYS_symlink]    sys_symlink,
     [SYS_vmprint]    sys_vmprint,
+    [SYS_sigalarm]   sys_sigalarm,
+    [SYS_sigreturn]  sys_sigreturn,
+
 };
 
 static char* syscalls_name[SYSNUM] = {
@@ -157,6 +162,8 @@ static char* syscalls_name[SYSNUM] = {
 
     "symlink",
     "vmprint",
+    "sigalarm",
+    "sigreturn",
 };
 
 // static int syscalls_arg[SYSNUM] = {
@@ -186,6 +193,9 @@ static char* syscalls_name[SYSNUM] = {
 //     1,    // int  22-strace(int);
 //     2,    // int  23 symlink(const char*, const char*);
 //     0,    // int  24 vmprint(void);
+//     2,    // int  25 sigalarm(int, (*)(void));
+//     0,    // int  26 sigreturn(void);
+
 // };
 
 #define __SYSPRINT_ON__
@@ -239,6 +249,7 @@ void sysprint(int num) {
 
     // 2 arg0: integer   arg1: pointer
     case SYS_fstat:
+    case SYS_sigalarm:
         printf("%d, 0x%x", arg0, arg1);
         break;
 
