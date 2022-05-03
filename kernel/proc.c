@@ -48,14 +48,14 @@ void proc_mapstacks(pagetable_t kpgtbl) {
 
 // initialize the proc table at boot time.
 void procinit(void) {
-    // struct proc *p;
+    struct proc *p;
 
     initlock(&pid_lock, "nextpid");
     initlock(&wait_lock, "wait_lock");
-    // for (p = proc; p < &proc[NPROC]; p++) {
-    //     initlock(&p->lock, "proc");
-    //     p->kstack = KSTACK((int)(p - proc));
-    // }
+    for (p = proc; p < &proc[NPROC]; p++) {
+        initlock(&p->lock, "proc");
+        // p->kstack = KSTACK((int)(p - proc));
+    }
 }
 
 // Must be called with interrupts disabled,
@@ -122,6 +122,23 @@ found:
         return 0;
     }
 
+    
+    // (+) An empty kernel page table.
+    p->kerntable = kvminit_kern();
+    if (p->kerntable == 0) {
+        freeproc(p);
+        release(&p->lock);
+        return 0;
+    }
+    char* pa = kalloc();
+    if (pa == 0) {
+        panic("kern_pagetable kalloc");
+    }
+    
+    uint64 va = TRAMPOLINE - 2 * PGSIZE;
+    mappages(p->kerntable, va, PGSIZE, (uint64)pa, PTE_R | PTE_W);
+    p->kstack = va;
+
     // An empty user page table.
     p->pagetable = proc_pagetable(p);
     if (p->pagetable == 0) {
@@ -130,23 +147,6 @@ found:
         return 0;
     }
 
-    // (+) An empty kernel page table.
-    p->kern_pgtable = kvminit_kern();
-    if (p->kern_pgtable == 0) {
-        freeproc(p);
-        release(&p->lock);
-        return 0;
-    }
-    char *pa = kalloc();
-    if (pa == 0) {
-        panic("kalloc");
-    }
-    // 旧的内核页表, 因为每个页都独立了所以不需要这样
-    uint64 va = TRAMPOLINE - 2 * PGSIZE;
-    mappages(p->kern_pgtable, va, PGSIZE, (uint64)pa, PTE_R | PTE_W);
-    p->kstack = va;
-
-    
 
     // Set up new context to start executing at forkret,
     // which returns to user space.
@@ -167,7 +167,8 @@ void proc_freekernpgtbl(pagetable_t kern_pgtable, uint64 kstack_addr, uint64 sz)
     uvmunmap(kern_pgtable, (uint64)etext, (PHYSTOP-(uint64)etext) / PGSIZE, 0);
     uvmunmap(kern_pgtable, TRAMPOLINE, 1, 0);
 
-    uvmunmap(kern_pgtable, kstack_addr, 1, 1);
+    // uvmunmap(kern_pgtable, kstack_addr, 1, 1);
+    uvmfreepage(kern_pgtable, kstack_addr, 1);
 }
 
 
@@ -184,9 +185,10 @@ static void freeproc(struct proc *p) {
     if (p->pagetable) {
         proc_freepagetable(p->pagetable, p->sz);
     }
-    if (p->kern_pgtable) {
-        proc_freekernpgtbl(p->kern_pgtable, p->kstack, p->sz);
+    if (p->kerntable) {
+        proc_freekernpgtbl(p->kerntable, p->kstack, p->sz);
     }
+    p->kerntable = 0;
         
     p->pagetable = 0;
     p->sz = 0;
@@ -468,15 +470,16 @@ void scheduler(void) {
                 p->state = RUNNING;
                 c->proc = p;
 
-                w_satp(MAKE_SATP(p->kern_pgtable));
+                w_satp(MAKE_SATP(p->kerntable));
                 sfence_vma();
 
                 swtch(&c->context, &p->context);
 
+                kvminithart();
+
                 // Process is done running for now.
                 // It should have changed its p->state before coming back.
                 c->proc = 0;
-                kvminithart();
             }
             release(&p->lock);
         }

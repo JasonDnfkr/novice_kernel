@@ -60,9 +60,6 @@ pagetable_t kvminit_kern() {
     // virtio mmio disk interface
     mappages(kpagetable, VIRTIO0, PGSIZE, VIRTIO0, PTE_R | PTE_W);
 
-    // CLINT
-    // mappages(kpagetable, CLINT, 0x10000, CLINT, PTE_R | PTE_W);
-
     // PLIC
     mappages(kpagetable, PLIC, 0x400000, PLIC, PTE_R | PTE_W);
 
@@ -84,6 +81,8 @@ pagetable_t kvminit_kern() {
 // Initialize the one kernel_pagetable
 void kvminit(void) {
     kernel_pagetable = kvmmake();
+    // CLINT
+    mappages(kernel_pagetable, CLINT, 0x10000, CLINT, PTE_R | PTE_W);
 }
 
 // Switch h/w page table register to the kernel's page table,
@@ -294,6 +293,16 @@ void freewalk(pagetable_t pagetable) {
 void uvmfree(pagetable_t pagetable, uint64 sz) {
     if (sz > 0)
         uvmunmap(pagetable, 0, PGROUNDUP(sz) / PGSIZE, 1);
+    freewalk(pagetable);
+}
+
+
+// 从 va 开始，删除 npages 的内存页，
+// 然后清除这个页表
+void uvmfreepage(pagetable_t pagetable, uint64 va, uint npages) {
+    if (npages > 0) {
+        uvmunmap(pagetable, va, npages, 1);
+    }
     freewalk(pagetable);
 }
 
