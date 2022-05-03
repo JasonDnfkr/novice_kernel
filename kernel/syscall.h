@@ -24,7 +24,8 @@
 #define SYS_strace        22
 #define SYS_sysinfo       23
 #define SYS_symlink       24
+#define SYS_vmprint       25
 
 
 //System call total num
-#define SYSNUM (24 + 1)
+#define SYSNUM (25 + 1)

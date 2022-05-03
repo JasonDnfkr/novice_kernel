@@ -98,6 +98,7 @@ extern uint64 sys_uptime(void);
 extern uint64 sys_strace(void);
 extern uint64 sys_sysinfo(void);
 extern uint64 sys_symlink(void);
+extern uint64 sys_vmprint(void);
 
 static uint64 (*syscalls[])(void) = {
     [SYS_fork]       sys_fork,
@@ -125,6 +126,7 @@ static uint64 (*syscalls[])(void) = {
     [SYS_strace]     sys_strace,
     [SYS_sysinfo]    sys_sysinfo,
     [SYS_symlink]    sys_symlink,
+    [SYS_vmprint]    sys_vmprint,
 };
 
 static char* syscalls_name[SYSNUM] = {
@@ -154,6 +156,7 @@ static char* syscalls_name[SYSNUM] = {
     "sysinfo",
 
     "symlink",
+    "vmprint",
 };
 
 // static int syscalls_arg[SYSNUM] = {
@@ -181,7 +184,8 @@ static char* syscalls_name[SYSNUM] = {
 //     1,    // int  21-close(int);
 
 //     1,    // int  22-strace(int);
-//     // 2,    // int  23 symlink(const char*, const char*);
+//     2,    // int  23 symlink(const char*, const char*);
+//     0,    // int  24 vmprint(void);
 // };
 
 #define __SYSPRINT_ON__

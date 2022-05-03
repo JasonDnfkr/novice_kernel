@@ -40,3 +40,4 @@ entry("uptime");
 entry("strace");
 entry("sysinfo");
 entry("symlink");
+entry("vmprint");

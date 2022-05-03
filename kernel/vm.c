@@ -5,6 +5,8 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "proc.h"
 
 /*
  * the kernel's page table.
@@ -71,7 +73,7 @@ void kvminithart() {
 //   21..29 -- 9 bits of level-1 index.
 //   12..20 -- 9 bits of level-0 index.
 //    0..11 -- 12 bits of byte offset within the page.
-pte_t*walk(pagetable_t pagetable, uint64 va, int alloc) {
+pte_t* walk(pagetable_t pagetable, uint64 va, int alloc) {
     if (va >= MAXVA)
         panic("walk");
 
@@ -393,4 +395,27 @@ int copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max) {
     } else {
         return -1;
     }
+}
+
+void vmprint_rev(pagetable_t pagetable, int level) {
+    for (int i = 0; i < 512; i++) {
+        pte_t pte = pagetable[i];
+        uint64 child = PTE2PA(pte);
+        if (pte & PTE_V) {
+            if (level == 0) printf("..");
+            else if (level == 1) printf(".. ..");
+            else if (level == 2) printf(".. .. ..");
+            printf("%d: pte %p pa %p\n", i, pte, child);
+
+            if ((pte & (PTE_R | PTE_W | PTE_X)) == 0) {
+                vmprint_rev((pagetable_t)child, level + 1);
+            }
+        }
+    }
+}
+
+void pgtblprint() {
+    pagetable_t pagetable = myproc()->pagetable;
+    printf("page table %p\n", pagetable);
+    vmprint_rev(pagetable, 0);
 }
