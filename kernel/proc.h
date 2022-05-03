@@ -112,4 +112,5 @@ struct proc {
     char name[16];               // 进程名字 (debug用)
 
     int mask;                    // 给 strace 提供的变量
+    pagetable_t kern_pgtable;    // 内核页表
 };

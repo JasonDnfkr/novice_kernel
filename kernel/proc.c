@@ -20,6 +20,8 @@ static void freeproc(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
 
+extern char etext[];
+
 // helps ensure that wakeups of wait()ing
 // parents are not lost. helps obey the
 // memory model when using p->parent.
@@ -29,13 +31,16 @@ struct spinlock wait_lock;
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
 // guard page.
+// 本来是在 procinit 中的内容，现在把这些
+// 单独拉出来，可以显得更合理
 void proc_mapstacks(pagetable_t kpgtbl) {
     struct proc *p;
 
     for (p = proc; p < &proc[NPROC]; p++) {
         char *pa = kalloc();
-        if (pa == 0)
+        if (pa == 0) {
             panic("kalloc");
+        }
         uint64 va = KSTACK((int)(p - proc));
         kvmmap(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
     }
@@ -43,14 +48,14 @@ void proc_mapstacks(pagetable_t kpgtbl) {
 
 // initialize the proc table at boot time.
 void procinit(void) {
-    struct proc *p;
+    // struct proc *p;
 
     initlock(&pid_lock, "nextpid");
     initlock(&wait_lock, "wait_lock");
-    for (p = proc; p < &proc[NPROC]; p++) {
-        initlock(&p->lock, "proc");
-        p->kstack = KSTACK((int)(p - proc));
-    }
+    // for (p = proc; p < &proc[NPROC]; p++) {
+    //     initlock(&p->lock, "proc");
+    //     p->kstack = KSTACK((int)(p - proc));
+    // }
 }
 
 // Must be called with interrupts disabled,
@@ -125,6 +130,24 @@ found:
         return 0;
     }
 
+    // (+) An empty kernel page table.
+    p->kern_pgtable = kvminit_kern();
+    if (p->kern_pgtable == 0) {
+        freeproc(p);
+        release(&p->lock);
+        return 0;
+    }
+    char *pa = kalloc();
+    if (pa == 0) {
+        panic("kalloc");
+    }
+    // 旧的内核页表, 因为每个页都独立了所以不需要这样
+    uint64 va = TRAMPOLINE - 2 * PGSIZE;
+    mappages(p->kern_pgtable, va, PGSIZE, (uint64)pa, PTE_R | PTE_W);
+    p->kstack = va;
+
+    
+
     // Set up new context to start executing at forkret,
     // which returns to user space.
     memset(&p->context, 0, sizeof(p->context));
@@ -134,15 +157,37 @@ found:
     return p;
 }
 
+
+// 释放内核页表
+void proc_freekernpgtbl(pagetable_t kern_pgtable, uint64 kstack_addr, uint64 sz) {
+    uvmunmap(kern_pgtable, UART0, 1, 0);
+    uvmunmap(kern_pgtable, VIRTIO0, 1, 0);
+    uvmunmap(kern_pgtable, PLIC, 0x400000 / PGSIZE, 0);
+    uvmunmap(kern_pgtable, KERNBASE, ((uint64)etext-KERNBASE) / PGSIZE, 0);
+    uvmunmap(kern_pgtable, (uint64)etext, (PHYSTOP-(uint64)etext) / PGSIZE, 0);
+    uvmunmap(kern_pgtable, TRAMPOLINE, 1, 0);
+
+    uvmunmap(kern_pgtable, kstack_addr, 1, 1);
+}
+
+
 // free a proc structure and the data hanging from it,
 // including user pages.
 // p->lock must be held.
 static void freeproc(struct proc *p) {
-    if (p->trapframe)
+    if (p->trapframe) {
         kfree((void *)p->trapframe);
+    }
+        
     p->trapframe = 0;
-    if (p->pagetable)
+
+    if (p->pagetable) {
         proc_freepagetable(p->pagetable, p->sz);
+    }
+    if (p->kern_pgtable) {
+        proc_freekernpgtbl(p->kern_pgtable, p->kstack, p->sz);
+    }
+        
     p->pagetable = 0;
     p->sz = 0;
     p->pid = 0;
@@ -398,20 +443,20 @@ int wait(uint64 addr) {
     }
 }
 
-// Per-CPU process scheduler.
-// Each CPU calls scheduler() after setting itself up.
-// Scheduler never returns.  It loops, doing:
-//  - choose a process to run.
-//  - swtch to start running that process.
-//  - eventually that process transfers control
-//    via swtch back to the scheduler.
+// CPU 进程调度器。
+// 每个 CPU 在初始化完成后运行这个函数，进入正常运行
+// 调度器函数用不退出，做以下工作:
+//  - 选择一个进程并 swtch 运行.
+//  - 恢复选择运行的进程的上下文.
+//  - 一段时间后，这个进程保存上下文，
+//    放弃 CPU 并 swtch 到调度器函数中。
 void scheduler(void) {
     struct proc *p;
     struct cpu *c = mycpu();
 
     c->proc = 0;
     for (;;) {
-        // Avoid deadlock by ensuring that devices can interrupt.
+        // 关闭中断，以防死锁
         intr_on();
 
         for (p = proc; p < &proc[NPROC]; p++) {
@@ -422,11 +467,16 @@ void scheduler(void) {
                 // before jumping back to us.
                 p->state = RUNNING;
                 c->proc = p;
+
+                w_satp(MAKE_SATP(p->kern_pgtable));
+                sfence_vma();
+
                 swtch(&c->context, &p->context);
 
                 // Process is done running for now.
                 // It should have changed its p->state before coming back.
                 c->proc = 0;
+                kvminithart();
             }
             release(&p->lock);
         }
