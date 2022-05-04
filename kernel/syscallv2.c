@@ -105,8 +105,6 @@ uint64 sys_sigalarm(void) {
 uint64 sys_sigreturn(void) {
     struct proc* p = myproc();
     *(p->trapframe) = p->trapalarm.trapframe_cp;
-    // p->trapalarm.interval = 0;
-    // p->trapalarm.ticks = 0;
     memset(&p->trapalarm.trapframe_cp, 0, sizeof(struct trapframe));
     p->trapalarm.state = 0;
     return 0;

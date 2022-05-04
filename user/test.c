@@ -17,7 +17,7 @@
 // }
 
 //
-// test program for the alarm lab.
+// test program for the alarm.
 // you can modify this file for testing,
 // but please make sure your kernel
 // modifications pass the original

@@ -31,15 +31,29 @@ uint64 sys_wait(void) {
 }
 
 uint64 sys_sbrk(void) {
-    int addr;
+    int oldsz;
     int n;
 
-    if (argint(0, &n) < 0)
+    if (argint(0, &n) < 0) {
         return -1;
-    addr = myproc()->sz;
-    if (growproc(n) < 0)
-        return -1;
-    return addr;
+    }
+
+    struct proc* p = myproc();
+    
+    oldsz = p->sz;
+    uint64 newsz = oldsz + n;
+    if (newsz >= MAXVA || newsz <= 0) {
+        return oldsz;
+    }
+    if (n < 0) {
+        if (uvmdealloc(p->pagetable, oldsz, newsz) != newsz) {
+            return -1;
+        }
+    }
+    p->sz = newsz;
+    // if (growproc(n) < 0)
+    //     return -1;
+    return oldsz;
 }
 
 uint64 sys_sleep(void) {
