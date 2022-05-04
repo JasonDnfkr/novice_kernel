@@ -21,3 +21,25 @@ void alarm_handler(void) {
         }
     }
 }
+
+void pagefault_handler(void) {
+    struct proc* p = myproc();
+
+    uint64 va = r_stval();
+    uint64 pa = (uint64)kalloc();
+    if (pa == 0) {
+        p->killed = 1;
+    }
+    else if (va >= p->sz || va < PGROUNDDOWN(p->trapframe->sp)) {
+        kfree((void*)pa);
+        p->killed = 1;
+    }
+    else {
+        memset((void*)pa, 0, PGSIZE);
+        va = PGROUNDDOWN(va);
+        if (mappages(p->pagetable, va, PGSIZE, pa, PTE_R | PTE_W | PTE_X | PTE_U) != 0) {
+            kfree((void*)pa);
+            p->killed = 1;
+        }
+    }
+}

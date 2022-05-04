@@ -332,6 +332,7 @@ void uvmfreepage(pagetable_t pagetable, uint64 va, uint npages) {
 // physical memory.
 // returns 0 on success, -1 on failure.
 // frees any allocated pages on failure.
+// 这个函数只有 fork() 使用！！
 int uvmcopy(pagetable_t old, pagetable_t new, uint64 sz) {
     pte_t *pte;
     uint64 pa, i;

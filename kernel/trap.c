@@ -65,23 +65,7 @@ void usertrap(void) {
         // ok
     }
     else if (scause == 13 || scause == 15) { // lazy allocation
-        uint64 va = r_stval();
-        uint64 pa = (uint64)kalloc();
-        if (pa == 0) {
-            p->killed = 1;
-        }
-        else if (va >= p->sz || va < PGROUNDDOWN(p->trapframe->sp)) {
-            kfree((void*)pa);
-            p->killed = 1;
-        }
-        else {
-            memset((void*)pa, 0, PGSIZE);
-            va = PGROUNDDOWN(va);
-            if (mappages(p->pagetable, va, PGSIZE, pa, PTE_R | PTE_W | PTE_X | PTE_U) != 0) {
-                kfree((void*)pa);
-                p->killed = 1;
-            }
-        }
+        pagefault_handler();
     }
     else {
         printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);

@@ -23,6 +23,8 @@ struct {
     struct run *freelist;
 } kmem;
 
+int refcount[PHYSTOP / PGSIZE];
+
 void kinit() {
     initlock(&kmem.lock, "kmem");
     freerange(end, (void *)PHYSTOP);
@@ -31,8 +33,21 @@ void kinit() {
 void freerange(void *pa_start, void *pa_end) {
     char *p;
     p = (char *)PGROUNDUP((uint64)pa_start);
-    for (; p + PGSIZE <= (char *)pa_end; p += PGSIZE)
+    for (; p + PGSIZE <= (char *)pa_end; p += PGSIZE) {
+        refcount[(uint64)p / PGSIZE] = 1;
         kfree(p);
+    }
+}
+
+// (+) 增加计数引用，用于 CoW
+void incref(uint64 pa) {
+    int pn = pa / PGSIZE;
+    acquire(&kmem.lock);
+    if (pa >= PHYSTOP || refcount[pn] < 1) {
+        panic("incref");
+    }
+    refcount[pn]++;
+    release(&kmem.lock);
 }
 
 // Free the page of physical memory pointed at by v,
@@ -42,8 +57,23 @@ void freerange(void *pa_start, void *pa_end) {
 void kfree(void *pa) {
     struct run *r;
 
-    if (((uint64)pa % PGSIZE) != 0 || (char *)pa < end || (uint64)pa >= PHYSTOP)
+    if (((uint64)pa % PGSIZE) != 0 || (char *)pa < end || (uint64)pa >= PHYSTOP) {
         panic("kfree");
+    }
+    
+    // (+) kfree 写时复制的页表，对于有引用的计数
+    // 不要删除，而是减少引用
+    acquire(&kmem.lock);
+    int pn = (uint64)pa / PGSIZE;
+    if (refcount[pn] < 1) {
+        panic("kfree cow");
+    }
+    refcount[pn]--;
+    release(&kmem.lock);
+    
+    if (refcount[pn] > 0) {
+        return;
+    }
 
     // Fill with junk to catch dangling refs.
     memset(pa, 1, PGSIZE);
@@ -64,12 +94,21 @@ void* kalloc(void) {
 
     acquire(&kmem.lock);
     r = kmem.freelist;
-    if (r)
+    if (r) {
         kmem.freelist = r->next;
+        int pn = (uint64)r / PGSIZE;
+        if (refcount[pn] != 0) {
+            panic("kalloc: ref");
+        }
+        refcount[pn] = 1;
+    }
+        
     release(&kmem.lock);
 
-    if (r)
+    if (r) {
         memset((char *)r, 5, PGSIZE); // fill with junk
+    }
+        
     return (void *)r;
 }
 
