@@ -15,6 +15,7 @@
             "types.h": "c",
             "user.h": "c",
             "defs.h": "c"
-        }
+        },
+        "editor.wordWrap": "on"
     }
 }

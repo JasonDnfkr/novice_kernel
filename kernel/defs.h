@@ -192,6 +192,9 @@ void            virtio_disk_intr(void);
 // sysfile.c
 struct inode*   create(char*, short, short, short);
 
+// trap_handler.c
+void            alarm_handler(void);
+
 
 
 // number of elements in fixed-size array
