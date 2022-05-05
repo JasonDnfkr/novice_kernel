@@ -1,10 +1,10 @@
-#include "types.h"
-#include "param.h"
-#include "memlayout.h"
-#include "riscv.h"
-#include "spinlock.h"
-#include "proc.h"
-#include "defs.h"
+#include "include/types.h"
+#include "include/param.h"
+#include "include/memlayout.h"
+#include "include/riscv.h"
+#include "include/spinlock.h"
+#include "include/proc.h"
+#include "include/defs.h"
 
 struct spinlock tickslock;
 uint ticks;
@@ -65,7 +65,9 @@ void usertrap(void) {
         // ok
     }
     else if (scause == 13 || scause == 15) { // lazy allocation
-        pagefault_handler();
+        if (pagefault_handler() != 0) {
+            p->killed = 1;
+        }
     }
     else {
         printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);

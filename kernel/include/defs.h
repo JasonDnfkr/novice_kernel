@@ -194,7 +194,7 @@ struct inode*   create(char*, short, short, short);
 
 // trap_handler.c
 void            alarm_handler(void);
-void            pagefault_handler(void);
+int             pagefault_handler(void);
 
 
 // number of elements in fixed-size array
