@@ -1,7 +1,7 @@
-#include "kernel/types.h"
-#include "kernel/stat.h"
+#include "kernel/include/types.h"
+#include "kernel/include/stat.h"
 #include "user/user.h"
-#include "kernel/fs.h"
+#include "kernel/include/fs.h"
 
 #define MAXSTRLEN 10
 
@@ -51,6 +51,7 @@ void lsfmtprint(char* buf, struct stat* st) {
         else {
             printf("%s  %s %d   %l\n", fmtname(buf), DIR, st->ino, st->size);
         }
+        break;
     // default:
     //     break;
     case T_DEVICE:

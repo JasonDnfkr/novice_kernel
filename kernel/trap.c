@@ -65,8 +65,30 @@ void usertrap(void) {
         // ok
     }
     else if (scause == 13 || scause == 15) { // lazy allocation
-        if (pagefault_handler() != 0) {
+        int op = pagefault_handler();
+        switch (op) {
+        case -1:
             p->killed = 1;
+            printf("usertrap(): kalloc failed. maybe run out of memory\n");
+            break;
+        
+        case -2:
+            p->killed = 1;
+            printf("usertrap(): invalid address\n");
+            break;
+        
+        case -3:
+            p->killed = 1;
+            printf("usertrap(): mappages couldn't allow a page table\n");
+            break;
+                
+        default:
+            break;
+        }
+
+        if (op != 0) {
+            printf("            unexpected scause %p pid=%d\n", r_scause(), p->pid);
+            printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
         }
     }
     else {
@@ -75,8 +97,9 @@ void usertrap(void) {
         p->killed = 1;
     }
 
-    if (p->killed)
+    if (p->killed) {
         exit(-1);
+    }
 
     // give up the CPU if this is a timer interrupt.
     if (which_dev == 2) {

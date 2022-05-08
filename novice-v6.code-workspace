@@ -14,7 +14,12 @@
             "memlayout.h": "c",
             "types.h": "c",
             "user.h": "c",
-            "defs.h": "c"
+            "defs.h": "c",
+            "fcntl.h": "c",
+            "stat.h": "c",
+            "file.h": "c",
+            "buf.h": "c",
+            "sleeplock.h": "c"
         },
         "editor.wordWrap": "on"
     }

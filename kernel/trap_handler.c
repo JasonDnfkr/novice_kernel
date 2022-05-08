@@ -32,7 +32,7 @@ int pagefault_handler(void) {
     }
     else if (va >= p->sz || va < PGROUNDDOWN(p->trapframe->sp)) {
         kfree((void*)pa);
-        return -1;
+        return -2;
     }
     else {
         memset((void*)pa, 0, PGSIZE);

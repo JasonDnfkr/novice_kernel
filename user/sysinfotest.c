@@ -1,7 +1,7 @@
-#include "../kernel/types.h"
-#include "../kernel/riscv.h"
-#include "../kernel/sysinfo.h"
-#include "../user/user.h"
+#include "kernel/include/types.h"
+#include "kernel/include/riscv.h"
+#include "kernel/include/sysinfo.h"
+#include "user/user.h"
 
 void sinfo(struct sysinfo *info) {
     if (sysinfo(info) < 0) {

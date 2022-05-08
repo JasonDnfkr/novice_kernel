@@ -1,6 +1,6 @@
-#include "kernel/param.h"
-#include "kernel/types.h"
-#include "kernel/stat.h"
+#include "kernel/include/param.h"
+#include "kernel/include/types.h"
+#include "kernel/include/stat.h"
 #include "user/user.h"
 
 int main(int argc, char* argv[]) {
