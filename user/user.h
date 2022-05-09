@@ -30,6 +30,7 @@ int     sysinfo(struct sysinfo*);
 int     symlink(const char*, const char*);
 int     sigalarm(int ticks, void (*handler)());
 int     sigreturn(void);
+int     vmprint(void);
 
 // ulib.c
 int     stat(const char*, struct stat*);
