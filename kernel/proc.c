@@ -336,6 +336,9 @@ int fork(void) {
 
     pid = np->pid;
 
+    np->mask = p->mask;
+    // printf("[%p, %p]\n", p->mask, np->mask);
+
     release(&np->lock);
 
     acquire(&wait_lock);

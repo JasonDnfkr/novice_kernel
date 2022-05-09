@@ -141,7 +141,7 @@ UPROGS=\
 	$U/_test\
 	$U/_sysinfotest\
 	$U/_lazytest\
-	$U/_memtest\
+	$U/_finaltest\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

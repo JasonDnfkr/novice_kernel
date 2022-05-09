@@ -11,11 +11,8 @@
 #include "include/fcntl.h"
 #include "include/sysinfo.h"
 
-/**
- * @brief 创建一个软连接。
- * 
- * @return uint64 
- */
+
+// 创建一个软连接。
 uint64 sys_symlink() {
     char path[MAXPATH];
     char target[MAXPATH];
