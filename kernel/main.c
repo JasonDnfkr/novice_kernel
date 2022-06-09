@@ -12,7 +12,7 @@ void main() {
         consoleinit();
         printfinit();
         printf("\n");
-        printf("novice_v6 OS kernel is booting\n");
+        printf("OS kernel is ready to begin initialization\n");
         printf("\n");
         kinit();            // physical page allocator
         kvminit();          // create kernel page table

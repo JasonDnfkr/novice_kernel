@@ -76,8 +76,13 @@ void usertrap(void) {
             p->killed = 1;
             printf("usertrap(): invalid address\n");
             break;
-        
+
         case -3:
+            p->killed = 1;
+            printf("usertrap(): va stack overflow\n");
+            break;
+
+        case -4:
             p->killed = 1;
             printf("usertrap(): mappages couldn't allow a page table\n");
             break;

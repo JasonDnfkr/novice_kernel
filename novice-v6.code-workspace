@@ -19,7 +19,8 @@
             "stat.h": "c",
             "file.h": "c",
             "buf.h": "c",
-            "sleeplock.h": "c"
+            "sleeplock.h": "c",
+            "sysinfo.h": "c"
         },
         "editor.wordWrap": "on"
     }

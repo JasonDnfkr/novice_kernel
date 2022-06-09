@@ -8,6 +8,8 @@
 #include "kernel/include/memlayout.h"
 #include "kernel/include/riscv.h"
 
+typedef uint pid_t;
+
 #define BUFSZ ((MAXOPBLOCKS + 2) * BSIZE)
 
 char buf[BUFSZ];
@@ -509,7 +511,7 @@ void subdir(char *s) {
 
 
 // 尝试给内核传输非法字符串地址
-void copyinstr1(char *s) {
+void copyinstr(char *s) {
     uint64 addrs[] = {0x80000000LL, 0xffffffffffffffff};
 
     for (int ai = 0; ai < 2; ai++) {
@@ -589,27 +591,44 @@ int run(void f(char *), char* s) {
 }
 
 int main(int argc, char* argv[]) {
-    printf("\n-----------开始内核功能测试-----------\n\n");
-
     struct test {
         void (*f)(char *);
         char* s;
+        char* argname;
     } tests[] = {
-        { MAXVAplus, "访问超出内存限制的地址" },
-        { memalloc, "内存无限增长" },
-        { kernmem, "读内核地址" },
-        { bsstest, "bss 段是否为 0" }, 
-        { stacktest, "栈溢出保护" },
-        { forktest, "fork 测试" },
+        { MAXVAplus, "访问超出内存限制的地址", "maxva" },
+        { memalloc, "内存无限增长", "memalloc" },
+        { kernmem, "读内核地址", "kernmem" },
+        { bsstest, "bss 段是否为 0", "bsstest" }, 
+        { stacktest, "栈溢出保护", "stacktest" },
+        { forktest, "fork 测试", "forktest" },
 
-        { createfile, "文件创建" },
-        { simplefs, "文件读写" },
-        { subdir, "文件夹创建" },
-        { copyinstr1, "读取非法字符串地址" },
-        { printpgtbl, "打印当前进程页表" },
+        { createfile, "文件创建", "createfile" },
+        { simplefs, "文件读写", "simplefs" },
+        // { subdir, "文件夹创建", "subdir" },
+        { copyinstr, "读取非法字符串地址", "straddr" },
+        { printpgtbl, "打印当前进程页表", "pgtbl" },
 
-        { 0, 0 },
+        { 0, 0, 0 },
     };
+
+    if (argc >= 2) {
+        for (int i = 1; i < argc; i++) {
+            int f = 0;
+            for (struct test *t = tests; t->argname != 0; t++) {
+                if (strcmp(argv[i], t->argname) == 0) {
+                    run(t->f, t->s);
+                    f = 1;
+                }
+            }
+            if (f == 0) {
+                printf("未知程序: %s\n", argv[i]);
+            }
+        }
+        exit(0);
+    }
+
+    printf("\n-----------开始内核功能测试-----------\n\n");
 
     for (struct test *t = tests; t->s != 0; t++) {
         run(t->f, t->s);

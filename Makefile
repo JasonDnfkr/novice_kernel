@@ -33,11 +33,7 @@ OBJS = \
   $K/trap_handler.o \
 
 
-# riscv64-unknown-elf- or riscv64-linux-gnu-
-# perhaps in /opt/riscv/bin
-#TOOLPREFIX = 
 
-# Try to infer the correct TOOLPREFIX if not set
 ifndef TOOLPREFIX
 TOOLPREFIX := $(shell if riscv64-unknown-elf-objdump -i 2>&1 | grep 'elf64-big' >/dev/null 2>&1; \
 	then echo 'riscv64-unknown-elf-'; \
@@ -121,26 +117,16 @@ mkfs/mkfs: mkfs/mkfs.c $K/include/fs.h $K/include/param.h
 UPROGS=\
 	$U/_cat\
 	$U/_echo\
-	$U/_forktest\
 	$U/_grep\
 	$U/_init\
 	$U/_kill\
-	$U/_ln\
 	$U/_ls\
 	$U/_mkdir\
 	$U/_rm\
 	$U/_sh\
-	$U/_stressfs\
-	$U/_usertests\
-	$U/_grind\
 	$U/_wc\
-	$U/_zombie\
-	$U/_symlinktest\
-	$U/_sleep\
 	$U/_strace\
-	$U/_test\
-	$U/_sysinfotest\
-	$U/_lazytest\
+	$U/_sysinfo\
 	$U/_finaltest\
 
 fs.img: mkfs/mkfs README $(UPROGS)
@@ -163,7 +149,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
 ifndef CPUS
-CPUS := 3
+CPUS := 1
 endif
 
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic

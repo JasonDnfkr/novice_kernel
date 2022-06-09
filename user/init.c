@@ -22,7 +22,7 @@ int main(void) {
     dup(0); // stderr
 
     while (1) {
-        printf("init: starting sh\n");
+        printf("[init] running shell\n");
         pid = fork();
         if (pid < 0) {
             printf("init: fork failed\n");

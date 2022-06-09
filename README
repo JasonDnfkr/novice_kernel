@@ -1,4 +1,17 @@
 A normal project for learning operating system programming.
-Instruction set: RISC-V
+Instruction set architecture: RISC-V
 Programming language: C
-Inspired by Unix 6 and Xv6
+Inspired by UNIX
+
+运行 finaltest 用户程序以进行功能测试
+测试函数列表:
+maxva:       访问内存超出限制的地址
+menalloc:    内存无限增长
+kernmen:     用户态读内核地址
+bsstest:     检测 bss 段是否为 0
+stacktest:   栈溢出保护
+forktest:    fork() 测试
+createfile:  文件创建
+simplefs:    文件读写, 读取 createfile 中的文件
+straddr:     读取非法字符串地址
+pgtbl:       打印当前进程的页表

@@ -36,10 +36,13 @@ void test2();
 void periodic();
 void slow_handler();
 
+void run(void);
+
 int main(int argc, char *argv[]) {
-    test0();
-    test1();
-    test2();
+    run();
+    // test0();
+    // test1();
+    // test2();
     exit(0);
 }
 
@@ -160,4 +163,26 @@ void slow_handler() {
     }
     sigalarm(0, 0);
     sigreturn();
+}
+
+
+
+void trap_show(void) {
+    static int cnt = 0;
+    printf("trap signal: %d\n", cnt++);
+    sigalarm(0, 0);
+    sigreturn();
+}
+
+void run(void) {
+    printf("开始 trap signal handler 测试\n");
+    sigalarm(2, trap_show);
+    for (int i = 0; i < 1000 * 500000; i++) {
+        if ((i % 1000000) == 0) {
+            write(1, ".", 1);
+        }
+        if (i > 234000000) {
+            break;
+        }
+    }
 }

@@ -30,16 +30,20 @@ int pagefault_handler(void) {
     if (pa == 0) {
         return -1;
     }
-    else if (va >= p->sz || va < PGROUNDDOWN(p->trapframe->sp)) {
+    else if (va >= p->sz) {
         kfree((void*)pa);
         return -2;
+    }
+    else if (va < PGROUNDDOWN(p->trapframe->sp)) {
+        kfree((void*)pa);
+        return -3;
     }
     else {
         memset((void*)pa, 0, PGSIZE);
         va = PGROUNDDOWN(va);
         if (mappages(p->pagetable, va, PGSIZE, pa, PTE_R | PTE_W | PTE_X | PTE_U) != 0) {
             kfree((void*)pa);
-            return -1;
+            return -4;
         }
     }
     return 0;
