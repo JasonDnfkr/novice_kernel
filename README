@@ -1,7 +1,7 @@
-A normal project for learning operating system programming.
-Instruction set architecture: RISC-V
-Programming language: C
-Inspired by UNIX
+为了学习 操作系统工程 的练习项目。
+指令集架构：RISC-V
+编程语言：C
+参考实现：UNIX 系统
 
 运行 finaltest 用户程序以进行功能测试
 测试函数列表:

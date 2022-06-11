@@ -245,7 +245,7 @@ void simplefs(char* s) {
             exit(1);
         }
 
-        enum { N = 100,
+        enum { N = 30,
             SZ = 10 };
 
         fd = open("small", O_CREATE | O_RDWR);
@@ -277,7 +277,7 @@ void simplefs(char* s) {
         close(fd);
 
         printf("创建了文件 small 并写入了一些内容，将执行 cat small 查看...\n");
-        sleep(15);
+        sleep(8);
         pid_t pid2 = fork();
         if (pid2 < 0) {
             forkfailed(s);
